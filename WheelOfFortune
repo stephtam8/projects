@@ -1,0 +1,360 @@
+/*
+Stephanie Tam
+Final Project: Wheel of Fortune
+Professor Montjoy
+*/
+
+#include <iostream>
+#include <string>
+#include <ctime>
+#include <cstdlib> //to use NULL and clear the screen
+#include <vector>
+#include <algorithm>
+#include <ctype.h>
+
+using namespace std;
+
+class ComputerPlayer { //Class designated to computer player, controls all of computers functions when playing against single user.
+	public:
+		char guessLetter();
+		int chooseMenuOption();
+		string guessPuzzle(string);
+	private:	
+};
+
+char ComputerPlayer::guessLetter() {
+	char consonantArray[20] = {'b','c','d','f','g','h','j','k','l','m','n','p','q','r','s','t','u','v','w','x'};
+	char guess = consonantArray[rand()%20];
+	cout << "Computer guesses the letter " << guess << endl;
+	return guess;
+}
+
+int ComputerPlayer::chooseMenuOption() {
+	int menuOption = (rand() % 3) + 1;
+	cout << "Computer chose menu option: " << menuOption << endl;
+	return menuOption;
+}
+
+string ComputerPlayer::guessPuzzle(string puzzle) {
+	return rand() % 10 == 7 ? puzzle : "";
+}
+
+class WheelOfFortune { //Default class for wheel of fortune game for user
+	
+	public:
+		void playGame();
+		void setGame();
+		WheelOfFortune() {
+			players = 0;
+			num = 0;
+			playerOneTotal = 0;
+			playerTwoTotal = 0;
+		}
+		
+	private:
+		int players;
+		void getUserInput();
+		int playTurn(int, bool);
+		int getNextPlayer(int);
+		void getPuzzleWord();
+		void buyAVowel(int);
+		void showPuzzleCharacter(char);
+		int spin(int);
+		int num;
+		string phrase;
+		string hiddenPuzzle;
+		int playerOneTotal;
+		int playerTwoTotal;
+		bool puzzleSolved;
+		bool isGuessCorrect(char);
+		int solvePuzzle(int);
+		vector<char> guessedLetters;
+		bool isPlayerComputer(int);
+};
+
+//Sets the Game
+void WheelOfFortune::setGame() { //prompts user to enter phrase/word
+	cout << "Enter word or phrase to be guessed" << endl;
+	getline(cin, phrase);
+	getUserInput();
+	//**hides puzzle
+	hiddenPuzzle = phrase;
+	for (int i = 0; i < hiddenPuzzle.length(); i++) {
+		if (!isspace(hiddenPuzzle[i])) {
+			hiddenPuzzle[i] = '_';
+		} 
+		else {
+			hiddenPuzzle[i] = ' ';
+		}
+	}
+	cout << "Puzzle is: " << hiddenPuzzle << endl;
+}
+
+void WheelOfFortune::getUserInput(){
+	cout << "Welcome to Wheel of Fortune!" << endl;
+	cout << "How many players will be playing?" << endl;
+	cout << "1: Single Player"<< endl;
+	cout << "2: Two Player"<< endl;
+	cin >> players;
+	cin.ignore();
+}
+
+
+void WheelOfFortune::showPuzzleCharacter(char character) {
+	// vector of ints that stores the indices of our character
+	// Loop through puzzle to find all instances of i that match our character
+	// Push those into our vector
+	// Loop through vector and at each element we set hiddenPuzzle[vector.at / [i]] = character
+	vector<int> puzzleChar;
+	for ( int i = 0; i < phrase.length(); i++) {
+		if(phrase[i] == character) {
+			puzzleChar.push_back(i);
+		}
+	}
+	for (int idx : puzzleChar) {
+		hiddenPuzzle[idx] = character;
+	}
+}
+
+bool WheelOfFortune::isGuessCorrect(char guess) {
+	if (find(guessedLetters.begin(), guessedLetters.end(), guess) != guessedLetters.end()) {
+		return false;
+	}
+	guessedLetters.push_back(guess);
+	for(int i = 0; i < phrase.length(); i++) {
+		if (guess == phrase[i]) {
+			cout << "Correct guess!" << endl;
+			return true;
+		}
+		
+	} 
+	cout << "Sorry that was either wrong or already guessed!" << endl;
+	return false;
+}
+
+void WheelOfFortune::buyAVowel(int player) {
+	// Reduce the money first
+	//takes money out of bank account
+	if (player ==1) {
+		if (playerOneTotal >= 10) {
+			playerOneTotal = playerOneTotal - 10;
+		}
+		else {
+			cout << "Player One does not have enough money!" << endl;
+			return;
+		}
+	}
+	else {
+		if (playerTwoTotal >= 10) {
+			playerTwoTotal = playerTwoTotal - 10;
+		}
+		else {
+			cout << "Player Two does not have enough money!" << endl;
+			return;
+			
+		}
+	}
+	//buyAVowel function
+	//will show vowel in the puzzle
+	vector<char> vowelArray = {'a','e','i','o','u','y'};
+	for(int  i = 0; i < phrase.length();i++)
+	{
+	    if(find(guessedLetters.begin(), guessedLetters.end(), phrase[i]) == guessedLetters.end() && find(vowelArray.begin(), vowelArray.end(), phrase[i]) != vowelArray.end())
+	    {
+	        guessedLetters.push_back(phrase[i]);
+	        //reveal hidden letter in puzzle.
+			showPuzzleCharacter(phrase[i]);	        
+	        return;
+	    }
+	}
+}
+
+int WheelOfFortune::spin(int player){
+	num = rand()%22;
+	
+	if (num == 0) {
+		cout << "You have gone bankrupt :(" << endl;
+		cout << player << " total is now 0." << endl;
+		if (player == 1) {
+			playerOneTotal = 0;
+		}
+		else {
+			playerTwoTotal = 0;
+		}
+		return getNextPlayer(player);
+	}
+	
+	if (num == 21) {
+		cout << "You lost your turn. Player "<< getNextPlayer(player) << " it is your turn."<< endl;
+		return getNextPlayer(player);
+	}
+	
+	if ((num>0)&&(num<21)) {
+		cout << "You have landed on " << num << " you may choose a consonant."<< endl;
+		char guess;
+		if (isPlayerComputer(player)) {
+			ComputerPlayer* comp = new ComputerPlayer();
+			guess = comp->guessLetter();
+		} else {
+			string input;
+			cin.ignore();
+			getline(cin, input);
+			guess = input[0];
+		}
+		if(isGuessCorrect(guess)) {
+			int lettersFound = 0;
+			for (int i = 0; i < phrase.length(); i++) {
+				if (phrase[i] == guess) {
+					lettersFound++;
+				}
+			}
+			
+			//will reveal letter in puzzle
+			showPuzzleCharacter(guess);
+			cout << "Puzzle is now: " << hiddenPuzzle << endl;
+			
+			//** money
+			if (player==1) {
+					playerOneTotal += num*lettersFound;
+					cout << "Player " << player << " your total is now $" << playerOneTotal << endl; 
+			}
+			else {
+				playerTwoTotal += num*lettersFound;
+				cout << "Player " << player << " your total is now $" << playerTwoTotal << endl;
+			}
+			//player keeps turn
+			return player;
+		}
+		else {
+			return getNextPlayer(player);
+		}
+	}
+	
+}
+
+int WheelOfFortune::getNextPlayer(int currentPlayer) {
+	return currentPlayer == 1 ? 2 : 1;
+}
+
+int WheelOfFortune::solvePuzzle(int player) {
+	//Player solves puzzle
+	//print current results of phrase
+	cout << "Your current results are: " << hiddenPuzzle << endl;
+	//have player guess the rest
+	cout << "Please make a guess." << endl;
+	string guess;
+	if (isPlayerComputer(player)) {
+		ComputerPlayer* comp = new ComputerPlayer();
+		guess = comp->guessPuzzle(phrase);
+	} else {
+		cin.ignore();
+		getline(cin, guess);
+	}
+	//does it have to be a different variable, like puzzleGuess?
+	
+	//Guess right, player won, puzzle solved, set to true, return player.
+	if (guess == phrase) {
+		puzzleSolved = true;
+		return player;
+	}
+	//Guess wrong, return other player.
+	else {
+		puzzleSolved = false;
+		return getNextPlayer(player);
+	}
+}
+
+int WheelOfFortune::playTurn(int player, bool computer) {
+	// Show the menu
+	cout << "Player " << player << ", would you like to: " << endl; 
+	cout << "   (1)Spin the wheel " << endl;
+	cout << "   (2)Buy a vowel" << endl;
+	cout << "   (3)Solve the puzzle " << endl;
+	int answer = 0;
+	if (computer) {
+		ComputerPlayer* comp = new ComputerPlayer();
+		answer = comp->chooseMenuOption();
+	} else {
+		cin >> answer;
+	}
+	switch(answer){
+		case 1:
+			cout<< "You have chosen to spin the wheel." << endl;
+			return spin(player);
+			
+	//	-> Spin the wheel
+	//		-> Based on the number do
+	//			-> Guess a consonant
+	//				-> Guess right, start new turn
+	//				-> Guess wrong, end turn
+	//			-> Go bankrupt :(
+	//			-> End turn
+		
+		case 2:
+			cout << "You have bought a vowel." << endl;
+			buyAVowel(player);
+			return getNextPlayer(player);
+			//	-> Buy a vowel
+			//		-> call function
+			//		-> end turn
+		
+		case 3:
+			cout << "You have chosen to solve the puzzle." << endl;
+			return solvePuzzle(player);
+			//	-> Solve the puzzle
+			//		-> call function
+			//		-> end turn
+	}
+}
+
+bool WheelOfFortune::isPlayerComputer(int player) {
+	if (players == 1 && player == 2) {
+		return true;
+	}
+	return false;
+}
+
+void WheelOfFortune::playGame(){
+	// Inialize who starts randomize player.
+	srand(time(NULL));
+	int player = (rand()%2) + 1;
+	cout << "Player " << player << " will go first." << endl;
+	while (!puzzleSolved) {
+		player = playTurn(player, isPlayerComputer(player));
+		// have them play a turn (using our playTurn function)
+		// set result of playTurn to who is playing
+		
+	}
+	int playerWon = player; //indicates which player won, including their balance
+	cout << playerWon << " has won. Congrats!"<< endl;
+	if (player==1) {
+		cout << "Your ending balance is $"<<playerOneTotal << endl;
+	}
+	else {
+		cout << "Your ending balance is $"<<playerTwoTotal << endl;
+	}
+}
+
+int main() {
+	// Create a new game
+	// Loop if they want to play a new game
+	// If they do, re-instantiate to reset the game, then set and play
+	bool keepPlaying = true;
+	while (keepPlaying) {
+		WheelOfFortune* game = new WheelOfFortune();
+		game->setGame();
+		game->playGame();
+		
+		cout << "Do you want to play again?" << endl;  //prompts user to play again or exit game.
+		cout << "(1) Yes" << endl;
+		cout << "(2) No" << endl;
+		int answer;
+		cin >> answer;
+		cin.ignore();
+		if (answer == 2) {
+			keepPlaying = false;
+		}
+	}
+
+	return 1;
+}
